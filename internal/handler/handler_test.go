@@ -24,7 +24,7 @@ func newTestServer(t *testing.T) (http.Handler, *store.Store) {
 
 func post(t *testing.T, h http.Handler, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/rides/start", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/rides", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -88,7 +88,7 @@ func TestStartRide_RejectsInvalid(t *testing.T) {
 
 func TestStartRide_RejectsWrongMethod(t *testing.T) {
 	h, _ := newTestServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/rides/start", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rides", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusMethodNotAllowed, rec.Code)

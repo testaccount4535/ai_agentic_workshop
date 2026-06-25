@@ -31,7 +31,7 @@ func New(st *store.Store, logger *slog.Logger) *Handler {
 // methods automatically yield 405 Method Not Allowed.
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /rides/start", h.startRide)
+	mux.HandleFunc("POST /rides", h.startRide)
 	return mux
 }
 

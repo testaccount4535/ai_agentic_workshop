@@ -14,12 +14,14 @@ import (
 	"github.com/testaccount4535/ai_agentic_workshop/internal/store"
 )
 
+const (
+	addr   = ":8080"
+	dbPath = "rides.db"
+)
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
-
-	addr := envOr("ADDR", ":8080")
-	dbPath := envOr("DB_PATH", "rides.db")
 
 	st, err := store.Open(dbPath, logger)
 	if err != nil {
@@ -55,11 +57,4 @@ func main() {
 		logger.Error("graceful shutdown failed", "error", err)
 	}
 	logger.Info("server stopped")
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
