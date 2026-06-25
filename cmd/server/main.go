@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	addr   = ":8888"
+	addr   = ":8080"
 	dbPath = "rides.db"
 )
 
