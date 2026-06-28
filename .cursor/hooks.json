@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeReadFile": [
+      {
+        "command": ".cursor/hooks/deny-env-read.sh",
+        "failClosed": true
+      }
+    ],
+    "beforeTabFileRead": [
+      {
+        "command": ".cursor/hooks/deny-env-read.sh",
+        "failClosed": true
+      }
+    ]
+  }
+}

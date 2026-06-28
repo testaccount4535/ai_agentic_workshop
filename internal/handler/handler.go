@@ -32,6 +32,7 @@ func New(st *store.Store, logger *slog.Logger) *Handler {
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /rides", h.startRide)
+	mux.HandleFunc("POST /rides/end", h.endRide)
 	return mux
 }
 
@@ -41,19 +42,10 @@ type errorResponse struct {
 }
 
 func (h *Handler) startRide(w http.ResponseWriter, r *http.Request) {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
-	dec.DisallowUnknownFields()
-
 	var ride model.RideStart
-	if err := dec.Decode(&ride); err != nil {
+	if err := decodeSingle(w, r, &ride); err != nil {
 		h.log.Warn("decode ride start", "remote", r.RemoteAddr, "error", err)
 		h.writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
-		return
-	}
-	// Reject trailing data / multiple JSON values in the body.
-	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		h.log.Warn("unexpected trailing data in ride start body", "remote", r.RemoteAddr)
-		h.writeError(w, http.StatusBadRequest, "request body must contain a single JSON object")
 		return
 	}
 
@@ -75,10 +67,60 @@ func (h *Handler) startRide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.writeJSON(w, http.StatusCreated, ride)
+}
+
+func (h *Handler) endRide(w http.ResponseWriter, r *http.Request) {
+	var ride model.RideEnd
+	if err := decodeSingle(w, r, &ride); err != nil {
+		h.log.Warn("decode ride end", "remote", r.RemoteAddr, "error", err)
+		h.writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if err := ride.Validate(); err != nil {
+		h.log.Warn("ride end validation failed", "ride_id", ride.ID, "error", err)
+		h.writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	switch err := h.store.SaveRideEnd(ride); {
+	case err == nil:
+		// success
+	case errors.Is(err, store.ErrRideNotStarted):
+		h.writeError(w, http.StatusNotFound, err.Error())
+		return
+	case errors.Is(err, store.ErrDuplicateRide):
+		h.writeError(w, http.StatusConflict, err.Error())
+		return
+	default:
+		h.log.Error("persist ride end", "ride_id", ride.ID, "error", err)
+		h.writeError(w, http.StatusInternalServerError, "could not save ride end")
+		return
+	}
+
+	h.writeJSON(w, http.StatusCreated, ride)
+}
+
+// decodeSingle decodes exactly one JSON object from the request body into dst,
+// rejecting unknown fields, oversized bodies, and any trailing data.
+func decodeSingle(w http.ResponseWriter, r *http.Request, dst any) error {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		return err
+	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("body must contain a single JSON object")
+	}
+	return nil
+}
+
+func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(ride); err != nil {
-		h.log.Error("encode ride start response", "ride_id", ride.ID, "error", err)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		h.log.Error("encode response", "error", err)
 	}
 }
 

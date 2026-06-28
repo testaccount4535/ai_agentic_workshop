@@ -13,12 +13,19 @@ import (
 	"github.com/testaccount4535/ai_agentic_workshop/internal/model"
 )
 
-// ErrDuplicateRide is returned when a ride start is saved with an ID that
-// already exists in the database.
+// ErrDuplicateRide is returned when a record is saved with an ID that already
+// exists in the relevant bucket (e.g. starting or ending the same ride twice).
 var ErrDuplicateRide = errors.New("ride already exists")
 
-// bucketRideStarts is the bbolt bucket holding ride start records keyed by ride ID.
-var bucketRideStarts = []byte("ride_starts")
+// ErrRideNotStarted is returned when ending a ride that has no corresponding
+// ride start on record.
+var ErrRideNotStarted = errors.New("ride has not been started")
+
+// Buckets holding records keyed by ride ID.
+var (
+	bucketRideStarts = []byte("ride_starts")
+	bucketRideEnds   = []byte("ride_ends")
+)
 
 // Store wraps a bbolt database and exposes ride persistence operations.
 type Store struct {
@@ -40,8 +47,12 @@ func Open(path string, log *slog.Logger) (*Store, error) {
 	}
 
 	if err := db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(bucketRideStarts)
-		return err
+		for _, name := range [][]byte{bucketRideStarts, bucketRideEnds} {
+			if _, err := tx.CreateBucketIfNotExists(name); err != nil {
+				return fmt.Errorf("create bucket %q: %w", name, err)
+			}
+		}
+		return nil
 	}); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("create buckets: %w", err)
@@ -108,6 +119,74 @@ func (s *Store) GetRideStart(id string) (model.RideStart, bool, error) {
 	})
 	if err != nil {
 		return model.RideStart{}, false, fmt.Errorf("get ride %q: %w", id, err)
+	}
+	return ride, found, nil
+}
+
+// SaveRideEnd persists a ride end. It returns ErrRideNotStarted if no ride start
+// exists for the ID, and ErrDuplicateRide if the ride has already been ended.
+// Both checks and the write happen in a single transaction so concurrent ends
+// of the same ride cannot both succeed.
+func (s *Store) SaveRideEnd(r model.RideEnd) error {
+	data, err := json.Marshal(r)
+	if err != nil {
+		return fmt.Errorf("marshal ride end %q: %w", r.ID, err)
+	}
+
+	key := []byte(r.ID)
+	err = s.db.Update(func(tx *bolt.Tx) error {
+		starts := tx.Bucket(bucketRideStarts)
+		ends := tx.Bucket(bucketRideEnds)
+		if starts == nil || ends == nil {
+			return fmt.Errorf("buckets %q/%q missing", bucketRideStarts, bucketRideEnds)
+		}
+		if starts.Get(key) == nil {
+			return ErrRideNotStarted
+		}
+		if existing := ends.Get(key); existing != nil {
+			return ErrDuplicateRide
+		}
+		return ends.Put(key, data)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrRideNotStarted):
+			s.log.Warn("rejected ride end for ride that was never started", "ride_id", r.ID)
+			return err
+		case errors.Is(err, ErrDuplicateRide):
+			s.log.Warn("rejected duplicate ride end", "ride_id", r.ID)
+			return err
+		default:
+			s.log.Error("failed to save ride end", "ride_id", r.ID, "error", err)
+			return fmt.Errorf("save ride end %q: %w", r.ID, err)
+		}
+	}
+
+	s.log.Info("saved ride end", "ride_id", r.ID, "distance", r.Distance)
+	return nil
+}
+
+// GetRideEnd fetches a ride end by ID. The boolean result is false when no
+// ride end exists for the given ID.
+func (s *Store) GetRideEnd(id string) (model.RideEnd, bool, error) {
+	var (
+		ride  model.RideEnd
+		found bool
+	)
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketRideEnds)
+		if b == nil {
+			return fmt.Errorf("bucket %q missing", bucketRideEnds)
+		}
+		data := b.Get([]byte(id))
+		if data == nil {
+			return nil
+		}
+		found = true
+		return json.Unmarshal(data, &ride)
+	})
+	if err != nil {
+		return model.RideEnd{}, false, fmt.Errorf("get ride end %q: %w", id, err)
 	}
 	return ride, found, nil
 }

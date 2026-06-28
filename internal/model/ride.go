@@ -55,3 +55,28 @@ func (r RideStart) Validate() error {
 	}
 	return nil
 }
+
+// RideEnd captures the information recorded when a ride completes. ID refers to
+// the ID of the RideStart this end belongs to.
+type RideEnd struct {
+	ID       string    `json:"id"`
+	Time     time.Time `json:"time"`
+	Distance float64   `json:"distance"`
+}
+
+// Validate ensures every field carries a sensible value. All failures wrap
+// ErrInvalidRide so the transport layer can map them to a single status code.
+// A zero distance is allowed (e.g. a ride cancelled at the pickup point); a
+// negative distance is not.
+func (r RideEnd) Validate() error {
+	if r.ID == "" {
+		return fmt.Errorf("%w: id is required", ErrInvalidRide)
+	}
+	if r.Time.IsZero() {
+		return fmt.Errorf("%w: time is required", ErrInvalidRide)
+	}
+	if r.Distance < 0 {
+		return fmt.Errorf("%w: distance must not be negative, got %v", ErrInvalidRide, r.Distance)
+	}
+	return nil
+}
