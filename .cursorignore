@@ -1,0 +1,3 @@
+# Environment files: keep secrets out of indexing and agent context.
+.env
+.env.*
