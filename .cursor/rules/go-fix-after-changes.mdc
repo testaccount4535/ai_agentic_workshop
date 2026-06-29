@@ -1,0 +1,18 @@
+---
+description: Run go fix after changing Go code
+globs: **/*.go
+alwaysApply: false
+---
+
+# Run `go fix` after code changes
+
+After modifying any Go source file, run `go fix` over the affected packages
+before considering the change complete.
+
+```bash
+go fix ./...
+```
+
+- Run it once after a batch of related edits, not after every single file save.
+- Review and keep any rewrites `go fix` applies (they migrate code to newer APIs).
+- If `go fix` changes files, re-run `go build ./...` / `go test ./...` to confirm everything still compiles and passes.

@@ -12,6 +12,11 @@
         "command": ".cursor/hooks/deny-env-read.sh",
         "failClosed": true
       }
+    ],
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/go-fix.sh"
+      }
     ]
   }
 }
