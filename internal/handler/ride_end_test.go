@@ -103,7 +103,9 @@ func TestEndRide_RejectsInvalid(t *testing.T) {
 
 func TestEndRide_RejectsWrongMethod(t *testing.T) {
 	h, _ := newTestServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/rides/end", nil)
+	// GET /rides/end now resolves to the get-ride route (id "end"), so use a
+	// method no route handles to exercise the 405 path.
+	req := httptest.NewRequest(http.MethodPut, "/rides/end", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusMethodNotAllowed, rec.Code)

@@ -33,6 +33,7 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /rides", h.startRide)
 	mux.HandleFunc("POST /rides/end", h.endRide)
+	mux.HandleFunc("GET /rides/{id}", h.getRide)
 	return mux
 }
 
@@ -100,6 +101,23 @@ func (h *Handler) endRide(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, http.StatusCreated, ride)
+}
+
+func (h *Handler) getRide(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	ride, found, err := h.store.GetRideStart(id)
+	if err != nil {
+		h.log.Error("fetch ride", "ride_id", id, "error", err)
+		h.writeError(w, http.StatusInternalServerError, "could not fetch ride")
+		return
+	}
+	if !found {
+		h.writeError(w, http.StatusNotFound, "ride not found")
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, ride)
 }
 
 // decodeSingle decodes exactly one JSON object from the request body into dst,
