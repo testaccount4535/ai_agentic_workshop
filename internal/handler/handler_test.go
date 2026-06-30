@@ -31,7 +31,7 @@ func post(t *testing.T, h http.Handler, body string) *httptest.ResponseRecorder 
 	return rec
 }
 
-const validBody = `{"id":"ride-1","driver_id":"driver-1","kind":"shared","time":"2026-06-25T12:00:00Z"}`
+const validBody = `{"id":"ride-1","driver_id":"driver-1","kind":"shared","time":"2026-06-25T12:00:00Z","request_time":"2026-06-25T11:58:00Z"}`
 
 // Pass criterion 1: posting a ride start writes to the db.
 func TestStartRide_Success(t *testing.T) {
@@ -66,7 +66,8 @@ func TestStartRide_RejectsInvalid(t *testing.T) {
 		{"missing id", `{"driver_id":"d1","kind":"shared","time":"2026-06-25T12:00:00Z"}`},
 		{"missing driver", `{"id":"r1","kind":"shared","time":"2026-06-25T12:00:00Z"}`},
 		{"invalid kind", `{"id":"r1","driver_id":"d1","kind":"carpool","time":"2026-06-25T12:00:00Z"}`},
-		{"missing time", `{"id":"r1","driver_id":"d1","kind":"shared"}`},
+		{"missing time", `{"id":"r1","driver_id":"d1","kind":"shared","request_time":"2026-06-25T11:58:00Z"}`},
+		{"missing request_time", `{"id":"r1","driver_id":"d1","kind":"shared","time":"2026-06-25T12:00:00Z"}`},
 		{"malformed json", `{"id":`},
 		{"unknown field", `{"id":"r1","driver_id":"d1","kind":"shared","time":"2026-06-25T12:00:00Z","foo":1}`},
 		{"empty body", ``},

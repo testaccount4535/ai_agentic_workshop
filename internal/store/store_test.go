@@ -22,10 +22,11 @@ func newTestStore(t *testing.T) *Store {
 
 func sampleRide() model.RideStart {
 	return model.RideStart{
-		ID:       "ride-1",
-		DriverID: "driver-1",
-		Kind:     model.RideKindShared,
-		Time:     time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC),
+		ID:          "ride-1",
+		DriverID:    "driver-1",
+		Kind:        model.RideKindShared,
+		Time:        time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC),
+		RequestTime: time.Date(2026, 6, 25, 11, 58, 0, 0, time.UTC),
 	}
 }
 

@@ -32,10 +32,11 @@ func (k RideKind) Valid() bool {
 
 // RideStart captures the information recorded when a ride begins.
 type RideStart struct {
-	ID       string    `json:"id"`
-	DriverID string    `json:"driver_id"`
-	Kind     RideKind  `json:"kind"`
-	Time     time.Time `json:"time"`
+	ID          string    `json:"id"`
+	DriverID    string    `json:"driver_id"`
+	Kind        RideKind  `json:"kind"`
+	Time        time.Time `json:"time"`
+	RequestTime time.Time `json:"request_time"`
 }
 
 // Validate ensures every field carries a sensible value. All failures wrap
@@ -52,6 +53,9 @@ func (r RideStart) Validate() error {
 	}
 	if r.Time.IsZero() {
 		return fmt.Errorf("%w: time is required", ErrInvalidRide)
+	}
+	if r.RequestTime.IsZero() {
+		r.RequestTime = time.Now().UTC()
 	}
 	return nil
 }

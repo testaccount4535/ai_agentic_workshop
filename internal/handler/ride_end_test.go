@@ -25,10 +25,11 @@ func postEnd(t *testing.T, h http.Handler, body string) *httptest.ResponseRecord
 func seedRideStart(t *testing.T, st *store.Store, id string) {
 	t.Helper()
 	require.NoError(t, st.SaveRideStart(model.RideStart{
-		ID:       id,
-		DriverID: "driver-1",
-		Kind:     model.RideKindShared,
-		Time:     time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC),
+		ID:          id,
+		DriverID:    "driver-1",
+		Kind:        model.RideKindShared,
+		Time:        time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC),
+		RequestTime: time.Date(2026, 6, 25, 11, 58, 0, 0, time.UTC),
 	}))
 }
 
